@@ -308,7 +308,6 @@ DWORD WINAPI HookThread(LPVOID lpParam)
         return 1;
     }
     */
-    WriteLog(L"[-] LoadLibraryA\n");
     if (MH_CreateHookApi(L"kernel32.dll", "LoadLibraryA", &HookLoadLibraryA, (void **)&pOrigLoadLibraryA) != MH_OK)
     {
         WriteLog(L"[-] Error creating hook for LoadLibraryA\n");
@@ -324,13 +323,13 @@ DWORD WINAPI HookThread(LPVOID lpParam)
     if (MH_CreateHookApi(L"kernel32.dll", "CreateFileW", &HookCreateFileW, (void **)&pOrigCreateFileW) != MH_OK)
     {
         WriteLog(L"[-] Error hooking CreateFileW\n");
-	return 1;
+        return 1;
     }
 
     if (MH_CreateHookApi(L"kernel32.dll", "CreateFileA", (CreateFileA_t)&HookCreateFileA, (void **)&pOrigCreateFileA) != MH_OK)
     {
         WriteLog(L"[-] Error hooking CreateFileA\n");
-	return 1;
+        return 1;
     }
     /*
     if (MH_CreateHookApi(L"kernel32.dll", "OpenFile", HookOpenFile, (void**)&pOrigOpenFile) != MH_OK) {
@@ -357,7 +356,7 @@ BOOL APIENTRY DllMain(
     case DLL_THREAD_ATTACH:
         break;
     case DLL_PROCESS_ATTACH:
-	DisableThreadLibraryCalls(hModule);
+        DisableThreadLibraryCalls(hModule);
         CreateThread(NULL, 0, HookThread, hModule, 0, NULL);
         break;
     case DLL_THREAD_DETACH:

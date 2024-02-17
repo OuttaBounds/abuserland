@@ -1,11 +1,14 @@
 #include <windows.h>
-//#include <winbase.h>
+// #include <winbase.h>
 #include <tlhelp32.h>
 #include <stdio.h>
-//#include <wow64apiset.h>
+// #include <wow64apiset.h>
 
 #define PIPE_NAME "\\\\.\\pipe\\inj"
 #ifdef __i386__
+extern const char binary_bin_reader_exe_start[];
+extern const char binary_bin_reader_exe_end[];
+
 extern const char binary_bin_injector_x86_exe_start[];
 extern const char binary_bin_injector_x86_exe_end[];
 
@@ -19,6 +22,9 @@ extern const char binary_bin_hooknt_x86_dll_start[];
 extern const char binary_bin_hooknt_x86_dll_end[];
 #endif
 #ifdef __x86_64__
+extern const char _binary_bin_reader_exe_start[];
+extern const char _binary_bin_reader_exe_end[];
+
 extern const char _binary_bin_injector_x86_exe_start[];
 extern const char _binary_bin_injector_x86_exe_end[];
 
@@ -31,16 +37,15 @@ extern const char _binary_bin_hooknt_x64_dll_end[];
 extern const char _binary_bin_hooknt_x86_dll_start[];
 extern const char _binary_bin_hooknt_x86_dll_end[];
 #endif
-typedef BOOL(WINAPI* IsWow64Process2_t)(
-  HANDLE hProcess,
-  USHORT *pProcessMachine,
-  USHORT *pNativeMachine
-);
+typedef BOOL(WINAPI *IsWow64Process2_t)(
+    HANDLE hProcess,
+    USHORT *pProcessMachine,
+    USHORT *pNativeMachine);
 
-static BOOL ExtractEmbeddedFile(const char* filename, const char* memPointer, unsigned long textSize)
+static BOOL ExtractEmbeddedFile(const char *filename, const char *memPointer, unsigned long textSize)
 {
-    FILE* fileout = fopen(filename, "wb");
-    if(fileout == NULL)
+    FILE *fileout = fopen(filename, "wb");
+    if (fileout == NULL)
     {
         wprintf(L"[-] Error opening %ls for writing.\n", filename);
         return FALSE;
@@ -50,61 +55,71 @@ static BOOL ExtractEmbeddedFile(const char* filename, const char* memPointer, un
     return TRUE;
 }
 
-static BOOL ExtractEmbedded(void)
+BOOL ExtractEmbedded(void)
 {
     const char *binaryData;
     unsigned long fileSize = 0;
 #ifdef __i386__
+    binaryData = binary_bin_reader_exe_start;
+    fileSize = binary_bin_reader_exe_end - binary_bin_reader_exe_start;
+    if (!ExtractEmbeddedFile("reader.exe", binaryData, fileSize))
+        return FALSE;
+
     binaryData = binary_bin_injector_x86_exe_start;
     fileSize = binary_bin_injector_x86_exe_end - binary_bin_injector_x86_exe_start;
-    if(!ExtractEmbeddedFile("injector.x86.exe", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("injector.x86.exe", binaryData, fileSize))
         return FALSE;
 
     binaryData = binary_bin_injector_x64_exe_start;
     fileSize = binary_bin_injector_x64_exe_end - binary_bin_injector_x64_exe_start;
-    if(!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
         return FALSE;
 
     binaryData = binary_bin_hooknt_x86_dll_start;
     fileSize = binary_bin_hooknt_x86_dll_end - binary_bin_hooknt_x86_dll_start;
-    if(!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
         return FALSE;
 
     binaryData = binary_bin_hooknt_x64_dll_start;
     fileSize = binary_bin_hooknt_x64_dll_end - binary_bin_hooknt_x64_dll_start;
-    if(!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
         return FALSE;
 #endif
 #ifdef __x86_64__
+    binaryData = _binary_bin_reader_exe_start;
+    fileSize = _binary_bin_reader_exe_end - _binary_bin_reader_exe_start;
+    if (!ExtractEmbeddedFile("reader.exe", binaryData, fileSize))
+        return FALSE;
+
     binaryData = _binary_bin_injector_x86_exe_start;
     fileSize = _binary_bin_injector_x86_exe_end - _binary_bin_injector_x86_exe_start;
-    if(!ExtractEmbeddedFile("injector.x86.exe", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("injector.x86.exe", binaryData, fileSize))
         return FALSE;
 
     binaryData = _binary_bin_injector_x64_exe_start;
     fileSize = _binary_bin_injector_x64_exe_end - _binary_bin_injector_x64_exe_start;
-    if(!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
         return FALSE;
 
     binaryData = _binary_bin_hooknt_x86_dll_start;
     fileSize = _binary_bin_hooknt_x86_dll_end - _binary_bin_hooknt_x86_dll_start;
-    if(!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
         return FALSE;
 
     binaryData = _binary_bin_hooknt_x64_dll_start;
     fileSize = _binary_bin_hooknt_x64_dll_end - _binary_bin_hooknt_x64_dll_start;
-    if(!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
+    if (!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
         return FALSE;
 #endif
     return TRUE;
 }
 
-static void GetProcessIdsFromFilename(const wchar_t* filename, DWORD** processIds, DWORD* count)
+static void GetProcessIdsFromFilename(const wchar_t *filename, DWORD **processIds, DWORD *count)
 {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot != INVALID_HANDLE_VALUE)
     {
-        PROCESSENTRY32W processEntry = { 0 };
+        PROCESSENTRY32W processEntry = {0};
         processEntry.dwSize = sizeof(PROCESSENTRY32W);
 
         if (Process32First(snapshot, &processEntry))
@@ -116,7 +131,7 @@ static void GetProcessIdsFromFilename(const wchar_t* filename, DWORD** processId
                     (*count)++;
 
                     // Use a temporary pointer to safely reallocate memory
-                    DWORD* tempProcessIds = (DWORD*)realloc(*processIds, (*count) * sizeof(DWORD));
+                    DWORD *tempProcessIds = (DWORD *)realloc(*processIds, (*count) * sizeof(DWORD));
                     if (tempProcessIds == NULL)
                     {
                         // Handle memory allocation failure
@@ -143,15 +158,17 @@ static BOOL GetTargetBitness(HANDLE hProcess, PBOOL isWin32, PBOOL isWOW64, PBOO
     if (hNtDll == 0)
     {
         wprintf(L"Cannot get handle for kernel32.dll, error %lu\n", GetLastError());
+        fflush(stdout);
         return FALSE;
     }
-    IsWow64Process2_t pIsWow64Process2 = (IsWow64Process2_t)GetProcAddress(hNtDll,"IsWow64Process2");
+    IsWow64Process2_t pIsWow64Process2 = (IsWow64Process2_t)GetProcAddress(hNtDll, "IsWow64Process2");
     USHORT processMachine;
     USHORT nativeMachine;
-    if(pIsWow64Process2 == INVALID_HANDLE_VALUE)
+    if (pIsWow64Process2 == INVALID_HANDLE_VALUE)
     {
         wprintf(L"Unable to load IsWow64Process2, error %lu\n", GetLastError());
-	    return FALSE;
+        fflush(stdout);
+        return FALSE;
     }
     if (!pIsWow64Process2(hProcess, &processMachine, &nativeMachine))
     {
@@ -163,7 +180,7 @@ static BOOL GetTargetBitness(HANDLE hProcess, PBOOL isWin32, PBOOL isWOW64, PBOO
     {
         *isWOW64 = FALSE;
 
-        if (nativeMachine == IMAGE_FILE_MACHINE_IA64 || nativeMachine == IMAGE_FILE_MACHINE_AMD64 || nativeMachine == IMAGE_FILE_MACHINE_ARM64) 
+        if (nativeMachine == IMAGE_FILE_MACHINE_IA64 || nativeMachine == IMAGE_FILE_MACHINE_AMD64 || nativeMachine == IMAGE_FILE_MACHINE_ARM64)
         {
             *isWin32 = FALSE;
             *processIs32Bit = FALSE;
@@ -178,6 +195,7 @@ static BOOL GetTargetBitness(HANDLE hProcess, PBOOL isWin32, PBOOL isWOW64, PBOO
         }
 
         wprintf(L"[!] Unknown Windows Architecture.\n");
+        fflush(stdout);
         return FALSE;
     }
 
@@ -188,13 +206,14 @@ static BOOL GetTargetBitness(HANDLE hProcess, PBOOL isWin32, PBOOL isWOW64, PBOO
     return TRUE;
 }
 
-static void StartInjectionProcess(DWORD processId, const wchar_t* dllName)
+static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
 {
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 
     if (hProcess == NULL)
     {
         wprintf(L"[!] Error: Unable to open process (Error %lu)\n", GetLastError());
+        fflush(stdout);
         return;
     }
 
@@ -202,8 +221,10 @@ static void StartInjectionProcess(DWORD processId, const wchar_t* dllName)
     BOOL isWOW64;
     BOOL isProc32;
 
-    if (!GetTargetBitness(hProcess, &isWin32, &isWOW64, &isProc32)) {
+    if (!GetTargetBitness(hProcess, &isWin32, &isWOW64, &isProc32))
+    {
         wprintf(L"[!] Failed trying to get process bitness data\n");
+        fflush(stdout);
         CloseHandle(hProcess);
         return;
     }
@@ -215,6 +236,7 @@ static void StartInjectionProcess(DWORD processId, const wchar_t* dllName)
     wprintf(L"[i] WOW64: %ls\n", isWOW64 ? L"true" : L"false");
     wprintf(L"[i] Process: %ls\n", isProc32 ? L"x86" : L"x64");
     wprintf(L"[+] Initiating injection...\n");
+    fflush(stdout);
 
     // Construct the full paths based on bitness
     wchar_t injectParams[MAX_PATH] = L"";
@@ -229,6 +251,7 @@ static void StartInjectionProcess(DWORD processId, const wchar_t* dllName)
     // determine which injector to start
 
     wprintf(L"[+] %ls\n", injectParams);
+    fflush(stdout);
 
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
@@ -248,7 +271,7 @@ static void StartInjectionProcess(DWORD processId, const wchar_t* dllName)
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     }
- }
+}
 
 DWORD WINAPI ThreadNamedPipe(LPVOID lpReserved)
 {
@@ -260,11 +283,11 @@ DWORD WINAPI ThreadNamedPipe(LPVOID lpReserved)
     ZeroMemory(readBuffer, 1024);
     hPipe = CreateNamedPipeA(
         PIPE_NAME,
-        PIPE_ACCESS_DUPLEX |       // Pipe open mode (read/write)
-        FILE_FLAG_OVERLAPPED,
+        PIPE_ACCESS_DUPLEX | // Pipe open mode (read/write)
+            FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE |         // Message type pipe
-        PIPE_READMODE_MESSAGE |     // Message-read mode
-        PIPE_WAIT,                // Blocking mode
+            PIPE_READMODE_MESSAGE | // Message-read mode
+            PIPE_WAIT,              // Blocking mode
         5,
         0,
         0,
@@ -276,22 +299,24 @@ DWORD WINAPI ThreadNamedPipe(LPVOID lpReserved)
         // wait for clients to connect to the pipe
         if (ConnectNamedPipe(hPipe, NULL) != FALSE)
         {
-            while (ReadFile(hPipe, readBuffer, sizeof(readBuffer)/2 - 1, &dwRead, NULL) != FALSE)
+            while (ReadFile(hPipe, readBuffer, sizeof(readBuffer) / 2 - 1, &dwRead, NULL) != FALSE)
             {
                 readBuffer[dwRead] = '\0';
                 wprintf(L"%s", readBuffer);
             }
+            fflush(stdout);
         }
         DisconnectNamedPipe(hPipe);
     }
     return 0;
 }
 
-int wmain(int argc, wchar_t* argv[])
+int wmain(int argc, wchar_t *argv[])
 {
-    if(!ExtractEmbedded())
+    if (!ExtractEmbedded())
     {
         wprintf(L"[!] Unable to extract embedded binaries!\n");
+        fflush(stdout);
         return 0;
     }
 
@@ -301,10 +326,10 @@ int wmain(int argc, wchar_t* argv[])
         return 1;
     }
 
-    const wchar_t* filename = argv[1];
-    const wchar_t* dllPath = argv[2];
+    const wchar_t *filename = argv[1];
+    const wchar_t *dllPath = argv[2];
 
-    DWORD* processIds = NULL;
+    DWORD *processIds = NULL;
     DWORD count = 0;
 
     GetProcessIdsFromFilename(filename, &processIds, &count);
@@ -312,22 +337,27 @@ int wmain(int argc, wchar_t* argv[])
     if (count == 0)
     {
         wprintf(L"[!] Error: No processes with filename \"%ls\" found.\n", filename);
+        fflush(stdout);
         free(processIds);
         return 1;
     }
     CreateThread(0, 0, ThreadNamedPipe, NULL, 0, 0);
+    fflush(stdout);
     for (DWORD i = 0; i < count; i++)
     {
         wprintf(L"[>] Trying to inject into PID %lu\n", processIds[i]);
+        fflush(stdout);
         StartInjectionProcess(processIds[i], dllPath);
     }
 
     free(processIds);
-    for (;;) {
+    for (;;)
+    {
         Sleep(10000);
     }
 
     wprintf(L"Exiting...\n");
+    fflush(stdout);
 
     return 0;
 }
