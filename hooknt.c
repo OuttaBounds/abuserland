@@ -33,7 +33,7 @@ static BOOL OpenLogFile()
 static void WriteLog(const WCHAR *format, ...)
 {
     if (hPipe == INVALID_HANDLE_VALUE)
-        return;
+        if(!OpenLogFile()) return;
 
     // Use a variable argument list
     va_list args;
@@ -121,34 +121,30 @@ CreateFileW_t pOrigCreateFileW = NULL;
 OpenFile_t pOrigOpenFile = NULL;
 GetFinalPathNameByHandle_t pGetFinalPathNameByHandle = NULL;
 
-HMODULE HookLoadLibraryA(LPCTSTR lpLibFileName)
+HMODULE WINAPI HookLoadLibraryA(LPCTSTR lpLibFileName)
 {
+    WriteLog(L"LoadLibraryA: %ls\n", lpLibFileName);
     HMODULE result = pOrigLoadLibraryA(lpLibFileName);
-    if (result == NULL)
+    if(result == NULL)
     {
         DWORD lastError = GetLastError();
         WriteLog(L"LoadLibraryA: %ls, error %lu\n", lpLibFileName, lastError);
         SetLastError(lastError);
-    }
-    else
-    {
-        WriteLog(L"LoadLibraryA: %ls\n", lpLibFileName);
+        return result;
     }
     return result;
 }
 
-HMODULE HookLoadLibraryW(LPCWSTR lpLibFileName)
+HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName)
 {
+    WriteLog(L"LoadLibraryW: %ls\n", lpLibFileName);
     HMODULE result = pOrigLoadLibraryW(lpLibFileName);
-    if (result == NULL)
+    if(result == NULL)
     {
         DWORD lastError = GetLastError();
         WriteLog(L"LoadLibraryW: %ls, error %lu\n", lpLibFileName, lastError);
         SetLastError(lastError);
-    }
-    else
-    {
-        WriteLog(L"LoadLibraryW: %ls\n", lpLibFileName);
+        return result;
     }
     return result;
 }
@@ -164,21 +160,20 @@ HANDLE WINAPI HookCreateFileW(
 {
     // Call the original function
     HANDLE result = pOrigCreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    DWORD lastError = GetLastError();
 
     // Check if there is an error
     if (result == 0)
     {
-        DWORD lastError = GetLastError();
         // Log the information to the file
         WriteLog(L"CreateFileW: %ls, error %lu\n", lpFileName, lastError);
-        SetLastError(lastError);
     }
     else
     {
         // Log the information to the file
         WriteLog(L"CreateFileW: %ls\n", lpFileName);
     }
-
+    SetLastError(lastError);
     return result;
 }
 
@@ -287,8 +282,7 @@ DWORD WINAPI HookThread(LPVOID lpParam)
         return 1;
     }
 
-    WriteLog(L"[+] Starting hooking thread...\n");
-    WriteLog(L"[+] Initializing hooking engine...\n");
+    WriteLog(L"[+] Starting hooking engine thread...\n");
     if (MH_Initialize() != MH_OK)
     {
         WriteLog(L"[-] Hooking engine failed to initialize!\n");
@@ -326,7 +320,7 @@ DWORD WINAPI HookThread(LPVOID lpParam)
         return 1;
     }
 
-    if (MH_CreateHookApi(L"kernel32.dll", "CreateFileA", (CreateFileA_t)&HookCreateFileA, (void **)&pOrigCreateFileA) != MH_OK)
+    if (MH_CreateHookApi(L"kernel32.dll", "CreateFileA", &HookCreateFileA, (void **)&pOrigCreateFileA) != MH_OK)
     {
         WriteLog(L"[-] Error hooking CreateFileA\n");
         return 1;

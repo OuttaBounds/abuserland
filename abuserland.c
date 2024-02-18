@@ -1,6 +1,7 @@
 #include <windows.h>
 // #include <winbase.h>
 #include <tlhelp32.h>
+#include <strings.h>
 #include <stdio.h>
 // #include <wow64apiset.h>
 
@@ -253,17 +254,14 @@ static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
     wprintf(L"[+] %ls\n", injectParams);
     fflush(stdout);
 
-    STARTUPINFOW si;
-    PROCESS_INFORMATION pi;
-    BOOL bResult = FALSE;
+    STARTUPINFOW si = {0};
+    PROCESS_INFORMATION pi = {0};
 
-    ZeroMemory(&pi, sizeof(pi));
-    ZeroMemory(&si, sizeof(STARTUPINFOW));
-    si.cb = sizeof(STARTUPINFO);
+    si.cb = sizeof(si);
     si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_SHOW;
 
-    bResult = CreateProcessW(NULL, injectParams, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi);
+    BOOL bResult = CreateProcessW(NULL, injectParams, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi);
 
     if (bResult)
     {
@@ -316,7 +314,6 @@ int wmain(int argc, wchar_t *argv[])
     if (!ExtractEmbedded())
     {
         wprintf(L"[!] Unable to extract embedded binaries!\n");
-        fflush(stdout);
         return 0;
     }
 
@@ -337,27 +334,30 @@ int wmain(int argc, wchar_t *argv[])
     if (count == 0)
     {
         wprintf(L"[!] Error: No processes with filename \"%ls\" found.\n", filename);
-        fflush(stdout);
         free(processIds);
         return 1;
     }
+
     CreateThread(0, 0, ThreadNamedPipe, NULL, 0, 0);
-    fflush(stdout);
     for (DWORD i = 0; i < count; i++)
     {
-        wprintf(L"[>] Trying to inject into PID %lu\n", processIds[i]);
-        fflush(stdout);
+        wprintf(L"[*] Trying to inject into PID %lu\n", processIds[i]);
         StartInjectionProcess(processIds[i], dllPath);
+        fflush(stdout);
     }
 
     free(processIds);
-    for (;;)
+    WCHAR readAction[1024];
+    BOOL loop = TRUE;
+    while(loop)
     {
-        Sleep(10000);
+        wprintf(L"[!] press \"x\" to exit, other key to continue...\n");
+        wscanf(L"%ls", readAction);
+        if(wcscmp(readAction, L"x") == 0) loop = FALSE;
+        fflush(stdout);
+        Sleep(100);
     }
 
     wprintf(L"Exiting...\n");
-    fflush(stdout);
-
     return 0;
 }

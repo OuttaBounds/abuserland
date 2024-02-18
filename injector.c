@@ -65,7 +65,7 @@ BOOL InjectDllRtlCreateUserThread(DWORD processId, const WCHAR *dllPath)
 
 	if (!pRtlCreateUserThread)
 	{
-		printf("[-] Cannot get RtlCreateUserThread address, error %lu\n", GetLastError());
+		wprintf(L"[-] Cannot get RtlCreateUserThread address, error %lu\n", GetLastError());
 		return FALSE;
 	}
 
@@ -79,8 +79,10 @@ BOOL InjectDllRtlCreateUserThread(DWORD processId, const WCHAR *dllPath)
 	}
 
 	wprintf(L"[+] Injection with RtlCreateUserThread started.\n");
+	fflush(stdout);
 	WaitForSingleObject(hThread, INFINITE);
 	wprintf(L"[+] Injection with RtlCreateUserThread completed.\n");
+	fflush(stdout);
 
 	CloseHandle(hThread);
 	if (!VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE))
@@ -88,6 +90,7 @@ BOOL InjectDllRtlCreateUserThread(DWORD processId, const WCHAR *dllPath)
 		wprintf(L"[-] Unable to free memory target process\n");
 	}
 	wprintf(L"[+] Memory in target process freed\n");
+	fflush(stdout);
 	CloseHandle(hProcess);
 
 	return TRUE;
@@ -115,10 +118,12 @@ BOOL InjectDllWriteProcessMemory(DWORD processId, const WCHAR *dllPath)
 		return FALSE;
 	}
 	wprintf(L"[+] DLL: %ls\n", fullPathDll);
+	fflush(stdout);
 	// Write the DLL path to the allocated memory
 	if (!WriteProcessMemory(hProcess, pRemoteDllPath, fullPathDll, pathLen * sizeof(wchar_t), NULL))
 	{
 		wprintf(L"Error: Unable to write DLL path to remote process (Error %lu)\n", GetLastError());
+		fflush(stdout);
 		VirtualFreeEx(hProcess, pRemoteDllPath, 0, MEM_RELEASE);
 		CloseHandle(hProcess);
 		return FALSE;
@@ -129,12 +134,14 @@ BOOL InjectDllWriteProcessMemory(DWORD processId, const WCHAR *dllPath)
 	if (hModule == NULL)
 	{
 		wprintf(L"Error: Unable to get handle of module: kernel32.dll");
+		fflush(stdout);
 		return FALSE;
 	}
 	FARPROC pLoadLibraryW = GetProcAddress(hModule, "LoadLibraryW");
 	if (pLoadLibraryW == NULL)
 	{
 		wprintf(L"Error: Unable to get address of LoadLibraryW (Error %lu)\n", GetLastError());
+		fflush(stdout);
 		VirtualFreeEx(hProcess, pRemoteDllPath, 0, MEM_RELEASE);
 		CloseHandle(hProcess);
 		return FALSE;
@@ -144,10 +151,12 @@ BOOL InjectDllWriteProcessMemory(DWORD processId, const WCHAR *dllPath)
 	if (hThread == NULL)
 	{
 		wprintf(L"Error: Unable to create remote thread (Error %lu)\n", GetLastError());
+		fflush(stdout);
 		VirtualFreeEx(hProcess, pRemoteDllPath, 0, MEM_RELEASE);
 		CloseHandle(hProcess);
 		return FALSE;
 	}
+	wprintf(L"[+] Injected %ls into PID: %lu.\n", fullPathDll, processId);
 	// Wait for the remote thread to finish
 	WaitForSingleObject(hThread, INFINITE);
 
@@ -156,7 +165,7 @@ BOOL InjectDllWriteProcessMemory(DWORD processId, const WCHAR *dllPath)
 	VirtualFreeEx(hProcess, pRemoteDllPath, 0, MEM_RELEASE);
 	CloseHandle(hProcess);
 
-	wprintf(L"[+] Injected %ls into PID: %lu\n", fullPathDll, processId);
+	fflush(stdout);
 	return TRUE;
 }
 
@@ -169,5 +178,5 @@ int wmain(int argc, wchar_t *argv[])
 	}
 	const wchar_t *dllPath = argv[1];
 	DWORD processId = _wtoi(argv[2]);
-	return InjectDllRtlCreateUserThread(processId, dllPath);
+	return InjectDllWriteProcessMemory(processId, dllPath);
 }
