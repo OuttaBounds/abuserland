@@ -16,6 +16,8 @@ i686-w64-mingw32-gcc-win32 -mconsole -mwindows -shared hooknt.c -lkernel32 -m32 
 
 x86_64-w64-mingw32-gcc injector.c -std=c99 -s -Os -municode -Wall -Werror -o bin/injector.x64.exe
 i686-w64-mingw32-gcc injector.c -std=c99 -s -Os -municode -Wall -Werror -o bin/injector.x86.exe
+x86_64-w64-mingw32-gcc target.c -std=c99 -s -Os -municode -Wall -Werror -o bin/target.x64.exe
+i686-w64-mingw32-gcc target.c -std=c99 -s -Os -municode -Wall -Werror -o bin/target.x86.exe
 i686-w64-mingw32-gcc reader.c -std=c99 -s -Os -municode -Wall -Werror -o bin/reader.exe
 
 #x86_64-w64-mingw32-gcc abuserland.c -std=c99 -s -Os -municode -Wall -Werror -o bin/abuserland.x64.exe

@@ -123,28 +123,32 @@ GetFinalPathNameByHandle_t pGetFinalPathNameByHandle = NULL;
 
 HMODULE WINAPI HookLoadLibraryA(LPCTSTR lpLibFileName)
 {
-    WriteLog(L"LoadLibraryA: %ls\n", lpLibFileName);
     HMODULE result = pOrigLoadLibraryA(lpLibFileName);
-    if(result == NULL)
+    if (result == NULL)
     {
         DWORD lastError = GetLastError();
         WriteLog(L"LoadLibraryA: %ls, error %lu\n", lpLibFileName, lastError);
         SetLastError(lastError);
-        return result;
+    }
+    else
+    {
+        WriteLog(L"LoadLibraryA: %ls\n", lpLibFileName);
     }
     return result;
 }
 
 HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName)
 {
-    WriteLog(L"LoadLibraryW: %ls\n", lpLibFileName);
     HMODULE result = pOrigLoadLibraryW(lpLibFileName);
-    if(result == NULL)
+    if (result == NULL)
     {
         DWORD lastError = GetLastError();
         WriteLog(L"LoadLibraryW: %ls, error %lu\n", lpLibFileName, lastError);
         SetLastError(lastError);
-        return result;
+    }
+    else
+    {
+        WriteLog(L"LoadLibraryW: %ls\n", lpLibFileName);
     }
     return result;
 }
@@ -163,7 +167,7 @@ HANDLE WINAPI HookCreateFileW(
     DWORD lastError = GetLastError();
 
     // Check if there is an error
-    if (result == 0)
+    if (result == INVALID_HANDLE_VALUE)
     {
         // Log the information to the file
         WriteLog(L"CreateFileW: %ls, error %lu\n", lpFileName, lastError);
@@ -188,21 +192,19 @@ HANDLE WINAPI HookCreateFileA(
 {
     // Call the original function
     HANDLE result = pOrigCreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-
+    DWORD lastError = GetLastError();
     // Check if there is an error
-    if (result == 0)
+    if (result == INVALID_HANDLE_VALUE)
     {
-        DWORD lastError = GetLastError();
         // Log the information to the file
         WriteLog(L"CreateFileA: %ls, error %lu\n", lpFileName, lastError);
-        SetLastError(lastError);
     }
     else
     {
         // Log the information to the file
         WriteLog(L"CreateFileA: %ls\n", lpFileName);
     }
-
+    SetLastError(lastError);
     return result;
 }
 
@@ -263,7 +265,7 @@ BOOL WINAPI LoadGetFinalPathNameByHandle()
     }
     pGetFinalPathNameByHandle = (GetFinalPathNameByHandle_t)GetProcAddress(hModule, "GetFinalPathNameByHandleW");
 
-    if (pGetFinalPathNameByHandle == NULL)
+    if (pGetFinalPathNameByHandle == 0)
     {
         WriteLog(L"[-] Failed to get the address of GetFinalPathNameByHandle\n");
         FreeLibrary(hModule);
