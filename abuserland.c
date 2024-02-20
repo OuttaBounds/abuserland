@@ -48,7 +48,8 @@ static BOOL ExtractEmbeddedFile(const char *filename, const char *memPointer, un
     FILE *fileout = fopen(filename, "wb");
     if (fileout == NULL)
     {
-        wprintf(L"[-] Error opening %ls for writing.\n", filename);
+        wprintf(L"[-] Error opening %s for writing.\n", filename);
+        fflush(stdout);
         return FALSE;
     }
     fwrite(memPointer, 1, textSize, fileout);

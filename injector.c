@@ -157,15 +157,27 @@ BOOL InjectDllWriteProcessMemory(DWORD processId, const WCHAR *dllPath)
 		return FALSE;
 	}
 	wprintf(L"[+] Injected %ls into PID: %lu.\n", fullPathDll, processId);
+	fflush(stdout);
 	// Wait for the remote thread to finish
 	WaitForSingleObject(hThread, INFINITE);
+	Sleep(10);
 
+	DWORD exitCode;
+	if(GetExitCodeThread(hThread, &exitCode) == 0)
+	{
+		wprintf(L"[-] Remote thread injected into PID: %lu exited with error %lu.\n", processId, exitCode);
+		fflush(stdout);
+	}
+	else
+	{
+		wprintf(L"[+] Remote thread injected into PID: %lu exited successfully.\n", processId);
+		fflush(stdout);
+	}
 	// Clean up
 	CloseHandle(hThread);
 	VirtualFreeEx(hProcess, pRemoteDllPath, 0, MEM_RELEASE);
 	CloseHandle(hProcess);
 
-	fflush(stdout);
 	return TRUE;
 }
 

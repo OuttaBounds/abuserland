@@ -53,7 +53,7 @@ static void WriteLog(const WCHAR *format, ...)
 
     // Include the process ID in the formatted string
     char finalBuffer[1100]; // Adjust the buffer size as needed
-    _snprintf_s(finalBuffer, sizeof(finalBuffer), _TRUNCATE, "[+] PID %u %s", processId, mbBuffer);
+    _snprintf_s(finalBuffer, sizeof(finalBuffer), _TRUNCATE, "[>] PID %u %s", processId, mbBuffer);
 
     DWORD bytesWritten = 0;
     // Write the multi-byte string to the pipe
