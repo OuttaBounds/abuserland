@@ -15,19 +15,19 @@ HANDLE hPipe;
 static BOOL OpenLogFile()
 {
     hPipe = CreateFileA(
-        PIPE_NAME,     // Filename
-        GENERIC_WRITE, // Desired access
-        0,             // Share mode (no sharing)
-        NULL,          // Security attributes
-        OPEN_EXISTING, // Open existing pipe
-        0,             // Flags and attributes
-        NULL           // Template file
+        PIPE_NAME,          // Filename
+        GENERIC_WRITE,      // Desired access
+        FILE_SHARE_READ |
+        FILE_SHARE_WRITE,   // Share mode (no sharing)
+        NULL,               // Security attributes
+        OPEN_EXISTING,      // Open existing pipe
+        0,                  // Flags and attributes
+        NULL                // Template file
     );
-    if (hPipe != INVALID_HANDLE_VALUE)
-    {
-        return TRUE;
-    }
-    return FALSE;
+    if (hPipe == INVALID_HANDLE_VALUE) return FALSE;
+    
+    return TRUE;
+    
 }
 
 static void WriteLog(const WCHAR *format, ...)
@@ -353,7 +353,7 @@ BOOL APIENTRY DllMain(
         break;
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
-        CreateThread(NULL, 0, HookThread, hModule, 0, NULL);
+        CreateThread(NULL, 0, HookThread, NULL, 0, NULL);
         break;
     case DLL_THREAD_DETACH:
         break;

@@ -38,6 +38,7 @@ extern const char _binary_bin_hooknt_x64_dll_end[];
 extern const char _binary_bin_hooknt_x86_dll_start[];
 extern const char _binary_bin_hooknt_x86_dll_end[];
 #endif
+
 typedef BOOL(WINAPI *IsWow64Process2_t)(
     HANDLE hProcess,
     USHORT *pProcessMachine,
@@ -208,7 +209,7 @@ static BOOL GetTargetBitness(HANDLE hProcess, PBOOL isWin32, PBOOL isWOW64, PBOO
     return TRUE;
 }
 
-static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
+static BOOL StartInjectionProcess(DWORD processId, const wchar_t *dllName)
 {
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 
@@ -216,7 +217,7 @@ static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
     {
         wprintf(L"[!] Error: Unable to open process (Error %lu)\n", GetLastError());
         fflush(stdout);
-        return;
+        return FALSE;
     }
 
     BOOL isWin32;
@@ -228,7 +229,7 @@ static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
         wprintf(L"[!] Failed trying to get process bitness data\n");
         fflush(stdout);
         CloseHandle(hProcess);
-        return;
+        return FALSE;
     }
     CloseHandle(hProcess);
 
@@ -241,9 +242,9 @@ static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
     fflush(stdout);
 
     // Construct the full paths based on bitness
-    wchar_t injectParams[MAX_PATH] = L"";
+    wchar_t injectCmd[MAX_PATH] = L"";
     swprintf_s(
-        injectParams,
+        injectCmd,
         MAX_PATH,
         L"injector.%ls.exe %ls.%ls.dll %li",
         (isWin32 || isWOW64) ? L"x86" : L"x64",
@@ -252,46 +253,88 @@ static void StartInjectionProcess(DWORD processId, const wchar_t *dllName)
         processId);
     // determine which injector to start
 
-    wprintf(L"[+] %ls\n", injectParams);
+    wprintf(L"[+] %ls\n", injectCmd);
     fflush(stdout);
+
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+    HANDLE pipeOut = CreateFileA(
+        PIPE_NAME,          // Filename
+        GENERIC_WRITE,      // Desired access
+        FILE_SHARE_WRITE,   // Share mode
+        &sa,                // Security attributes
+        OPEN_EXISTING,      // Open existing pipe
+        0,                  // Flags and attributes
+        NULL);              // Template file
+
+    if(pipeOut == INVALID_HANDLE_VALUE) 
+        return FALSE;
 
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
-
     si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_SHOW;
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdInput = NULL;
+    si.hStdError = pipeOut;
+    si.hStdOutput = pipeOut;
 
-    BOOL bResult = CreateProcessW(NULL, injectParams, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi);
+    DWORD flags = NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW;
 
-    if (bResult)
-    {
-        WaitForSingleObject(pi.hThread, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
+    BOOL bResult = CreateProcessW(
+        NULL,       // No module name (use command line)
+        injectCmd,  // Command line
+        NULL,       // Process handle not inheritable
+        NULL,       // Thread handle not inheritable
+        TRUE,       // Set handle inheritance to TRUE
+        flags,      // creation flags
+        NULL,       // Use parent's environment block
+        NULL,       // Use parent's starting directory
+        &si,        // Pointer to STARTUPINFO structure
+        &pi);       // Pointer to PROCESS_INFORMATION structure
+
+    if (!bResult) return FALSE;
+
+    WaitForSingleObject(pi.hThread, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    CloseHandle(pipeOut);
+    return TRUE;
+
 }
 
-DWORD WINAPI ThreadNamedPipe(LPVOID lpReserved)
+DWORD WINAPI ThreadNamedPipe(LPVOID lpreserved)
 {
     // create named pipe
-    HANDLE hPipe;
-    BYTE readBuffer[1024];
-    DWORD dwRead;
-
-    ZeroMemory(readBuffer, 1024);
-    hPipe = CreateNamedPipeA(
+    HANDLE hPipe = CreateNamedPipeA(
         PIPE_NAME,
-        PIPE_ACCESS_DUPLEX | // Pipe open mode (read/write)
-            FILE_FLAG_OVERLAPPED,
+        PIPE_ACCESS_DUPLEX |        // Pipe open mode (read/write)
+        FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE |         // Message type pipe
-            PIPE_READMODE_MESSAGE | // Message-read mode
-            PIPE_WAIT,              // Blocking mode
-        5,
+        PIPE_READMODE_MESSAGE |     // Message-read mode
+        PIPE_WAIT,                  // Blocking mode
+        PIPE_UNLIMITED_INSTANCES,   // Max instances
         0,
         0,
         NMPWAIT_USE_DEFAULT_WAIT,
         NULL);
+
+    if(hPipe == INVALID_HANDLE_VALUE)
+    {
+        wprintf(L"[-] Error creating named pipe\n");
+        return 1;
+    }
+    if(hPipe == NULL)
+    {
+        wprintf(L"[-] Invalid named pipe handle!\n");
+        return 1;
+    }
+    BYTE readBuffer[1024];
+    DWORD dwRead;
+
+    ZeroMemory(readBuffer, 1024);
 
     while (hPipe != INVALID_HANDLE_VALUE)
     {
@@ -324,6 +367,8 @@ int wmain(int argc, wchar_t *argv[])
         return 1;
     }
 
+    setbuf(stdout, NULL);
+
     const wchar_t *filename = argv[1];
     const wchar_t *dllPath = argv[2];
 
@@ -339,24 +384,52 @@ int wmain(int argc, wchar_t *argv[])
         return 1;
     }
 
-    CreateThread(0, 0, ThreadNamedPipe, NULL, 0, 0);
+    // Create thread to continuously read from the named pipe
+    CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
+    Sleep(100);
+
     for (DWORD i = 0; i < count; i++)
     {
+        CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
         wprintf(L"[*] Trying to inject into PID %lu\n", processIds[i]);
-        StartInjectionProcess(processIds[i], dllPath);
+        BOOL isInjected = StartInjectionProcess(processIds[i], dllPath);
+        if(!isInjected)
+        {
+            wprintf(L"[-] Unable to inject into PID %lu\n", processIds[i]);
+        }
         fflush(stdout);
     }
 
     free(processIds);
     WCHAR readAction[1024];
     BOOL loop = TRUE;
+
+    // Get the console window handle
+    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    // Get console screen buffer info
+    CONSOLE_SCREEN_BUFFER_INFO cBufferInfo = {0};
+    GetConsoleScreenBufferInfo(consoleHandle, &cBufferInfo);
+    
+    Sleep(100);
+    wprintf(L"[!] press \"x\" to exit, other key to continue...\n");
+
+    // Calculate the bottom row position
+    DWORD botRow = cBufferInfo.srWindow.Bottom;
+
     while(loop)
     {
-        wprintf(L"[!] press \"x\" to exit, other key to continue...\n");
+        // Set the cursor position to the bottom row
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), (COORD){0, botRow});
+
+        // Print a message on the bottom row
+        wprintf(L"> ");
         wscanf(L"%ls", readAction);
         if(wcscmp(readAction, L"x") == 0) loop = FALSE;
+        
+        // Move the cursor back to a new line
+        // SetCursorPosition(0, bottomRow + 1);
         fflush(stdout);
-        Sleep(100);
     }
 
     wprintf(L"Exiting...\n");
