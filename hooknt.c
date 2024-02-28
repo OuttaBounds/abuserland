@@ -40,20 +40,15 @@ static void WriteLog(const WCHAR *format, ...)
     va_start(args, format);
 
     // Format the wide string
-    wchar_t buffer[1024]; // Adjust the buffer size as needed
-    _vsnwprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), _TRUNCATE, format, args);
+    WCHAR buffer[1024]; // Adjust the buffer size as needed
+    _snwprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), _TRUNCATE, format, args);
 
     // Clean up the variable argument list
     va_end(args);
 
-    // Convert the wide string to a multi-byte string
-    char mbBuffer[2 * sizeof(buffer)];
-    size_t convertedChars;
-    wcstombs_s(&convertedChars, mbBuffer, sizeof(mbBuffer), buffer, _TRUNCATE);
-
     // Include the process ID in the formatted string
-    char finalBuffer[1100]; // Adjust the buffer size as needed
-    _snprintf_s(finalBuffer, sizeof(finalBuffer), _TRUNCATE, "[>] PID %u %s", processId, mbBuffer);
+    WCHAR finalBuffer[2048];
+    _snwprintf_s(finalBuffer, sizeof(finalBuffer), _TRUNCATE, "[>] PID %u %s", processId, buffer);
 
     DWORD bytesWritten = 0;
     // Write the multi-byte string to the pipe

@@ -62,59 +62,60 @@ BOOL ExtractEmbedded(void)
 {
     const char *binaryData;
     unsigned long fileSize = 0;
+    BOOL areExtracted = TRUE; 
 #ifdef __i386__
     binaryData = binary_bin_reader_exe_start;
     fileSize = binary_bin_reader_exe_end - binary_bin_reader_exe_start;
     if (!ExtractEmbeddedFile("reader.exe", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = binary_bin_injector_x86_exe_start;
     fileSize = binary_bin_injector_x86_exe_end - binary_bin_injector_x86_exe_start;
     if (!ExtractEmbeddedFile("injector.x86.exe", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = binary_bin_injector_x64_exe_start;
     fileSize = binary_bin_injector_x64_exe_end - binary_bin_injector_x64_exe_start;
     if (!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = binary_bin_hooknt_x86_dll_start;
     fileSize = binary_bin_hooknt_x86_dll_end - binary_bin_hooknt_x86_dll_start;
     if (!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = binary_bin_hooknt_x64_dll_start;
     fileSize = binary_bin_hooknt_x64_dll_end - binary_bin_hooknt_x64_dll_start;
     if (!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 #endif
 #ifdef __x86_64__
     binaryData = _binary_bin_reader_exe_start;
     fileSize = _binary_bin_reader_exe_end - _binary_bin_reader_exe_start;
     if (!ExtractEmbeddedFile("reader.exe", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = _binary_bin_injector_x86_exe_start;
     fileSize = _binary_bin_injector_x86_exe_end - _binary_bin_injector_x86_exe_start;
     if (!ExtractEmbeddedFile("injector.x86.exe", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = _binary_bin_injector_x64_exe_start;
     fileSize = _binary_bin_injector_x64_exe_end - _binary_bin_injector_x64_exe_start;
     if (!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = _binary_bin_hooknt_x86_dll_start;
     fileSize = _binary_bin_hooknt_x86_dll_end - _binary_bin_hooknt_x86_dll_start;
     if (!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 
     binaryData = _binary_bin_hooknt_x64_dll_start;
     fileSize = _binary_bin_hooknt_x64_dll_end - _binary_bin_hooknt_x64_dll_start;
     if (!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
-        return FALSE;
+        areExtracted = FALSE;
 #endif
-    return TRUE;
+    return areExtracted;
 }
 
 static void GetProcessIdsFromFilename(const wchar_t *filename, DWORD **processIds, DWORD *count)
@@ -357,8 +358,7 @@ int wmain(int argc, wchar_t *argv[])
 {
     if (!ExtractEmbedded())
     {
-        wprintf(L"[!] Unable to extract embedded binaries!\n");
-        return 0;
+        wprintf(L"[-] Unable to extract all embedded binaries, continuing ...\n");
     }
 
     if (argc != 3)
