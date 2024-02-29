@@ -383,7 +383,7 @@ int wmain(int argc, wchar_t *argv[])
         free(processIds);
         return 1;
     }
-
+    CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
     for (DWORD i = 0; i < count; i++)
     {
         // Create thread to continuously read from the named pipe
