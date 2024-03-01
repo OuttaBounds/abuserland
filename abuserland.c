@@ -392,6 +392,10 @@ static void PrintKey(BYTE pKey)
         ShiftPressed();
         wprintf(L"%c", pKey);
         break;
+    case VK_OEM_PERIOD:
+        ShiftPressed();
+        wprintf(L".");
+        break;
     case VK_OEM_1:
         ShiftPressed();
         wprintf(L";");
@@ -415,6 +419,14 @@ static void PrintKey(BYTE pKey)
     case VK_OEM_6:
         ShiftPressed();
         wprintf(L"]");
+        break;
+    case VK_OEM_7:
+        ShiftPressed();
+        wprintf(L"'");
+        break;
+    case VK_OEM_102:
+        ShiftPressed();
+        wprintf(L"\\");
         break;
     case VK_OEM_MINUS:
         ShiftPressed();
