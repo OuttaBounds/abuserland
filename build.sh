@@ -27,7 +27,7 @@ i686-w64-mingw32-ld -r -b binary -o hooknt.x86.dll.o bin/hooknt.x86.dll
 i686-w64-mingw32-ld -r -b binary -o hooknt.x64.dll.o bin/hooknt.x64.dll
 i686-w64-mingw32-ld -r -b binary -o injector.x86.exe.o bin/injector.x86.exe
 i686-w64-mingw32-ld -r -b binary -o injector.x64.exe.o bin/injector.x64.exe
-i686-w64-mingw32-gcc abuserland.c -m32 reader.exe.o hooknt.x86.dll.o hooknt.x64.dll.o injector.x86.exe.o injector.x64.exe.o -std=c99 -s -Os -municode -Wall -Werror -o bin/abuserland.x86.exe
+i686-w64-mingw32-gcc abuserland.c -m32 reader.exe.o hooknt.x86.dll.o hooknt.x64.dll.o injector.x86.exe.o injector.x64.exe.o -ldbghelp -std=c99 -s -Os -municode -Wall -Werror -o bin/abuserland.x86.exe
 # UPX causes AV positive flags.
 upx --ultra-brute bin/abuserland.x86.exe
 
@@ -38,5 +38,5 @@ x86_64-w64-mingw32-ld -r -b binary -o hooknt.x86.dll.o bin/hooknt.x86.dll
 x86_64-w64-mingw32-ld -r -b binary -o hooknt.x64.dll.o bin/hooknt.x64.dll
 x86_64-w64-mingw32-ld -r -b binary -o injector.x86.exe.o bin/injector.x86.exe
 x86_64-w64-mingw32-ld -r -b binary -o injector.x64.exe.o bin/injector.x64.exe
-x86_64-w64-mingw32-gcc abuserland.c reader.exe.o hooknt.x86.dll.o hooknt.x64.dll.o injector.x86.exe.o injector.x64.exe.o -std=c99 -s -Os -municode -Wall -Werror -o bin/abuserland.x64.exe
+x86_64-w64-mingw32-gcc abuserland.c reader.exe.o hooknt.x86.dll.o hooknt.x64.dll.o injector.x86.exe.o injector.x64.exe.o -ldbghelp -std=c99 -s -Os -municode -Wall -Werror -o bin/abuserland.x64.exe
 upx --ultra-brute bin/abuserland.x64.exe
