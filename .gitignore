@@ -4,6 +4,7 @@
 # Directories
 .vs/*
 bin/*
+.vscode/*
 
 # Object files
 *.o

